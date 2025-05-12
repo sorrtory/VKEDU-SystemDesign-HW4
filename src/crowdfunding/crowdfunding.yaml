@@ -1,0 +1,323 @@
+openapi: 3.0.0
+info:
+  title: Система краудфандинга
+  description: Описывает взаимодействие пользователей и разработчиков с системой краудфандинга!
+  version: 1.0.1
+  
+servers:
+  - url: https://api.steam.com/crowdfunding
+  
+security:
+  - bearerAuth: []
+
+paths:
+  /projects: 
+    post:
+      summary: Создать новый проект
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectInput'
+      responses:
+        '201':
+          description: Проект создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          description: Неверный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          
+    get:
+      summary: Получить список проектов
+      responses:
+        '200':
+          description: Список проектов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /projects/{project_id}:
+    get:
+      summary: Получить информацию о проекте
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          description: 'Уникальный идентификатор проекта в формате UUID.'
+          schema:
+            type: string
+            format: uuid
+            example: "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8"
+      responses:
+        '200':
+          description: Информация о проекте
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          description: Проект не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+    patch:
+      summary: Обновить информацию о проекте
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          description: 'Уникальный идентификатор проекта в формате UUID.'
+          schema:
+            type: string
+            format: uuid
+            example: "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdateInput'
+      responses:
+        '200':
+          description: Проект обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          description: Неверный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Нет прав на изменение проекта
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Проект не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /contribute:
+    post:
+      summary: Внести взнос в проект
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributionInput'
+      responses:
+        '200':
+          description: Спасибо за поддержку!
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Спасибо за поддержку!"
+                  reward:
+                    $ref: '#/components/schemas/Reward'
+                required:
+                  - message
+        '400':
+          description: Неверный формат запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Проект не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      
+  schemas:
+    Project:
+      type: object
+      required:
+        - project_id
+        - title
+        - description
+        - goal_amount
+        - raised_amount
+        - rewards
+      properties:
+        project_id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8"
+        status:
+          type: string
+          enum: [draft, active, completed, canceled]
+          default: "draft"
+          example: "active"
+        title:
+          type: string
+          example: "Футбольный симулятор"
+        description: 
+          type: string
+          example: "Необходимо собрать средства для увеличения команды"
+        goal_amount:
+          type: number
+          example: 10000
+        raised_amount:
+          type: number
+          example: 150
+        rewards:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reward'
+              
+    ProjectInput:
+      type: object
+      required:
+        - title
+        - description
+        - goal_amount
+      properties:
+        title:
+          type: string
+          example: "Футбольный симулятор"
+        description:
+          type: string
+          example: "Необходимо собрать средства для увеличения команды"
+        goal_amount:
+          type: number
+          example: 10000
+          
+    Reward:
+      type: object
+      required:
+        - rwd_id
+        - description
+        - amount_required
+      properties:
+        rwd_id:
+          type: string
+          example: "rwd1"
+        description:
+          type: string
+          example: "Доступ к закрытому бета-тесту"
+        amount_required:
+          type: number
+          example: 1500
+
+    Error:
+      type: object
+      required:
+        - message
+        - code
+      properties:
+        message:
+          type: string
+          example: "Не найдено!"
+        code:
+          type: integer
+          example: 404
+          
+    ContributionInput:
+      type: object
+      required:
+        - project_id
+        - amount
+      properties:
+        project_id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8"
+        amount:
+          type: number
+          example: 500
+    
+    ProjectUpdateInput:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "Обновлённый заголовок"
+        description:
+          type: string
+          example: "Новое описание проекта"
+        goal_amount:
+          type: number
+          example: 20000
+        status:
+          type: string
+          enum: [draft, active, completed, cancelled]
+          example: active
