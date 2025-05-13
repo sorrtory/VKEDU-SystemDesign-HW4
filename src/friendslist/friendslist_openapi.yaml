@@ -19,6 +19,9 @@ components:
       description: Что угодно. Важно само наличие значения
     SessionData:
       type: object
+      required:
+        - sessionID
+        - steamid
       properties:
         sessionID:
           type: string
