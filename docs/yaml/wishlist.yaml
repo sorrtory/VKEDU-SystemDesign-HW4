@@ -1,0 +1,229 @@
+openapi: 3.0.0
+info:
+  title: Steam Wishlist API
+  version: 1.0.1
+  description: |
+    Документация API для управления списком желаемого (wishlist) пользователя на платформе Steam.
+    ВАЖНО - Проверку "успеха" следует производить по полю "success" в теле ответа запроса т.к. в данных методах в случае ошибки не вышло словить 400/401/404 в ответе.
+
+servers:
+  - url: https://store.steampowered.com
+  - url: https://api.steampowered.com
+
+components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    AccessToken:
+      type: apiKey
+      in: query
+      name: access_token
+
+  schemas:
+    AddToWishlistResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        wishlistCount:
+          type: integer
+          example: 12
+
+    AddToWishlistError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        wishlistCount:
+          type: integer
+          example: 0
+
+    RemoveFromWishlistResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        wishlistCount:
+          type: integer
+          example: 11
+
+    ReorderWishlistRequest:
+      type: object
+      properties:
+        rgApps:
+          type: array
+          description: Массив игр с указанием appid и нового приоритета
+          items:
+            type: object
+            properties:
+              appid:
+                type: integer
+                example: 730
+              priority:
+                type: integer
+                example: 1
+
+    ReorderWishlistResponse:
+      type: object
+      properties:
+        result:
+          type: integer
+          description: 1 — успех, 0 — ошибка
+          example: 1
+
+    ReorderWishlistError:
+      type: object
+      properties:
+        result:
+          type: integer
+          description: 0 указывает на ошибку (например, пустой rgApps)
+          example: 0
+
+security:
+  - SessionCookie: []
+  - AccessToken: []
+
+paths:
+  /api/addtowishlist:
+    post:
+      summary: Добавить игру в Wishlist
+      security:
+        - SessionCookie: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - appid
+              properties:
+                appid:
+                  type: integer
+                  description: ID игры в Steam
+                  example: 730
+      responses:
+        '200':
+          description: Результат добавления (успех или ошибка)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AddToWishlistResponse'
+                  - $ref: '#/components/schemas/AddToWishlistError'
+              examples:
+                success:
+                  summary: Успешно добавлено
+                  value:
+                    success: true
+                    wishlistCount: 13
+                error:
+                  summary: Ошибка — неавторизованный или неверный appid
+                  value:
+                    success: false
+                    wishlistCount: 0
+
+  /api/removefromwishlist:
+    post:
+      summary: Удалить игру из Wishlist
+      security:
+        - SessionCookie: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - appid
+              properties:
+                appid:
+                  type: integer
+                  description: ID игры в Steam
+                  example: 730
+      responses:
+        '200':
+          description: Результат удаления
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/RemoveFromWishlistResponse'
+                  - $ref: '#/components/schemas/AddToWishlistError'
+              examples:
+                success:
+                  summary: Успешное удаление
+                  value:
+                    success: true
+                    wishlistCount: 11
+                error:
+                  summary: Ошибка — игра не найдена или не авторизован
+                  value:
+                    success: false
+                    wishlistCount: 0
+
+  /wishlist/action/reorder:
+    post:
+      summary: Изменить порядок игр в Wishlist
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderWishlistRequest'
+            example:
+              rgApps:
+                - appid: 730
+                  priority: 1
+                - appid: 440
+                  priority: 2
+      responses:
+        '200':
+          description: Результат сортировки
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ReorderWishlistResponse'
+                  - $ref: '#/components/schemas/ReorderWishlistError'
+              examples:
+                success:
+                  summary: Успешная перестановка
+                  value:
+                    result: 1
+                error:
+                  summary: Ошибка — пустой rgApps или недопустимые appid
+                  value:
+                    result: 0
+
+  /IWishlistService/GetWishlistSortedFiltered/v1:
+    get:
+      summary: Получить wishlist пользователя (protobuf)
+      security:
+        - AccessToken: []
+      parameters:
+        - in: query
+          name: access_token
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: input_protobuf_encoded
+          required: true
+          schema:
+            type: string
+          description: Бинарный protobuf-запрос в base64-формате
+      responses:
+        '200':
+          description: Бинарный ответ protobuf (всегда HTTP 200, ошибки внутри тела)
+          content:
+            application/x-protobuf:
+              schema:
+                type: string
+                format: binary
+                example: "<binary data>"
